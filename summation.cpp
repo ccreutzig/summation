@@ -97,16 +97,23 @@ int main_one_number(int argc, char const *argv[]) {
   uint64_t cnt = 0;
   std::cout << "----------------------------------------------------------------------------------------------------" << std::endl;
   while(value && cnt <= maxiter) {
+    int64_t oldval = value;
     value -= str.pop();
     ++cnt;
-    if (0 == (cnt % (maxiter/100))) {
-      std::cout << "+" << std::flush;
+    if ((value < 0) != (oldval < 0)) {
+      if (-10 < value && value < 10) {
+        // zero crossing
+        std::cout << "zero crossing at step " << cnt << ", now: " << value << std::endl;
+      } else {
+        std::cerr << "overflow at step " << cnt << std::endl;
+        exit(1);
+      }
     }
   }
   if (value) {
-    std::cout << std::endl << start << " in base " << base << " needs more than " << maxiter << " iterations" << std::endl;
+    std::cout << start << " in base " << base << " needs more than " << maxiter << " iterations" << std::endl;
   } else {
-    std::cout << std::endl << start << " in base " << base << " reaches 0 in step " << cnt << std::endl;
+    std::cout << start << " in base " << base << " reaches 0 in step " << cnt << std::endl;
   }
 
   return 0;
