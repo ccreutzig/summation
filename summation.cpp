@@ -2,32 +2,32 @@
 #include <iostream>
 #include <iomanip>
 #include <assert.h>
+#include "integer.h"
 
-
+template <int Base>
 class DigitStream {
 private:
-  std::stack<int8_t> digits;
-  const uint64_t base;
-  DigitStream *next;
-  int64_t value;
+  std::deque<int8_t> digits;
+  DigitStream<Base> *next;
+  integer<Base> value;
   void fill_buffer() {
-    int sign = (value < 0) ? -1 : 1;
-    uint64_t absVal = sign*value;
-    while(absVal) {
-      digits.push(sign*(absVal % base));
-      absVal /= base;
-    }
+    value.writeDigits(std::back_inserter(digits));
   }
   void refill_buffer() {
     if (!next) {
-      next = new DigitStream(value, base);
+      next = new DigitStream<Base>(value);
     }
-    value -= next -> pop();
+    bool dummy;
+    value.subtract(next -> pop(), dummy);
     fill_buffer();
   }
 public:
-  DigitStream(int64_t start, uint64_t base_) : value(start), base(base_), next(NULL) {
-    assert(value);
+  DigitStream(integer<Base> start) : value(start), next(NULL) {
+    assert(!value.isZero());
+    fill_buffer();
+  }
+  DigitStream(int64_t start) : value(start), next(NULL) {
+    assert(!value.isZero());
     fill_buffer();
   }
   ~DigitStream() { delete next; }
@@ -35,27 +35,46 @@ public:
     if (digits.empty()) {
       refill_buffer();
     }
-    int8_t ret=digits.top();
-    digits.pop();
+    int8_t ret=digits.back();
+    digits.pop_back();
     return ret;
   }
 };
 
+template <int Base>
+void innerLoopFor(int64_t value) {
+  DigitStream<Base> str(value);
+  uint64_t cnt = 0;
+  while(value && cnt <= 1e10) {
+    value -= str.pop();
+    ++cnt;
+  }
+  if (value) {
+     std::cout << " >10000000000" << std::flush;
+  } else {
+    std::cout << std::setw(13) << cnt << std::flush;
+  }
+}
+
 void runFor(int64_t start) {
   std::cout << std::setw(4) << start << ": ";
+  innerLoopFor<2>(start);
+  innerLoopFor<3>(start);
+  innerLoopFor<4>(start);
+  innerLoopFor<5>(start);
+  innerLoopFor<6>(start);
+  innerLoopFor<7>(start);
+  innerLoopFor<8>(start);
+  innerLoopFor<9>(start);
+  innerLoopFor<10>(start);
+  innerLoopFor<11>(start);
+  innerLoopFor<12>(start);
+  innerLoopFor<13>(start);
+  innerLoopFor<14>(start);
+  innerLoopFor<15>(start);
+  innerLoopFor<16>(start);
   for (int base = 2; base < 17; ++base) {
     int64_t value = start;
-    DigitStream str(value, base);
-    uint64_t cnt = 0;
-    while(value && cnt <= 1e10) {
-      value -= str.pop();
-      ++cnt;
-    }
-    if (value) {
-       std::cout << " >10000000000" << std::flush;
-    } else {
-      std::cout << std::setw(13) << cnt << std::flush;
-    }
   }
   std::cout << std::endl;
 }
@@ -83,38 +102,27 @@ int main_table(int argc, char const *argv[]) {
 }
 
 int main_one_number(int argc, char const *argv[]) {
-  if (argc != 4) {
-    std::cerr << "Usage: " << argv[0] << " start base maxiter" << std::endl;
+  if (argc != 2) {
+    std::cerr << "Usage: " << argv[0] << " start" << std::endl;
     exit(1);
   }
 
   int64_t start = atoll(argv[1]);
-  unsigned int base = atoi(argv[2]);
-  int64_t maxiter = atoll(argv[3]);
+  const int base = 10;
 
-  int64_t value = start;
-  DigitStream str(value, base);
+  integer<base> value(start);
+  DigitStream<base> str(start);
   uint64_t cnt = 0;
-  std::cout << "----------------------------------------------------------------------------------------------------" << std::endl;
-  while(value && cnt <= maxiter) {
-    int64_t oldval = value;
-    value -= str.pop();
+  while (!value.isZero()) {
+    bool zero_crossing = false;
+    int8_t val = str.pop();
+    value.subtract(val, zero_crossing);
     ++cnt;
-    if ((value < 0) != (oldval < 0)) {
-      if (-10 < value && value < 10) {
-        // zero crossing
-        std::cout << "zero crossing at step " << cnt << ", now: " << value << std::endl;
-      } else {
-        std::cerr << "overflow at step " << cnt << std::endl;
-        exit(1);
-      }
+    if (zero_crossing) {
+      std::cout << "zero crossing at step " << cnt << ", now: " << value << std::endl;
     }
   }
-  if (value) {
-    std::cout << start << " in base " << base << " needs more than " << maxiter << " iterations" << std::endl;
-  } else {
-    std::cout << start << " in base " << base << " reaches 0 in step " << cnt << std::endl;
-  }
+  std::cout << start << " in base " << base << " reaches 0 in step " << cnt << std::endl;
 
   return 0;
 }
